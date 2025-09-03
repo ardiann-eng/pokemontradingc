@@ -6,6 +6,20 @@ class BattleCardGame {
         this.opponentCard = null;
         this.gamePhase = 'selection'; // selection, battle, result
         this.battleLog = [];
+        this.soundEffects = {
+            battleStart: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-game-show-intro-331.mp3'),
+            attack: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-magic-spell-attack-2761.mp3'),
+            defend: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-magic-shield-2780.mp3'),
+            victory: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-winning-chimes-2015.mp3'),
+            defeat: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-losing-drums-2023.mp3'),
+            cardSelect: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-arcade-game-jump-coin-216.mp3'),
+            hover: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-select-click-1109.mp3')
+        };
+        
+        // Set volume levels
+        Object.values(this.soundEffects).forEach(sound => {
+            sound.volume = 0.6;
+        });
         
         this.initializeCards();
         this.initializeEventListeners();
@@ -249,6 +263,10 @@ class BattleCardGame {
         cardDiv.appendChild(statsDiv);
 
         if (!isInBattle) {
+            cardDiv.addEventListener('mouseenter', () => {
+                this.playSound('hover');
+            });
+            
             cardDiv.addEventListener('click', () => this.selectCard(card));
             cardDiv.addEventListener('dblclick', () => this.showCardDetail(card));
         }
@@ -274,6 +292,7 @@ class BattleCardGame {
         }
         
         this.selectedCard = card;
+        this.playSound('cardSelect');
         const confirmBtn = document.getElementById('confirmSelection');
         if (confirmBtn) {
             confirmBtn.disabled = false;
@@ -314,9 +333,21 @@ class BattleCardGame {
         modal.classList.remove('fade-in');
     }
 
+    // Method untuk memainkan efek suara
+    playSound(soundName) {
+        if (this.soundEffects[soundName]) {
+            const sound = this.soundEffects[soundName].cloneNode();
+            sound.volume = 0.6;
+            sound.play().catch(e => console.log('Audio play failed:', e));
+        }
+    }
+
     // Mulai pertarungan
     startBattle() {
         if (!this.selectedCard) return;
+
+        // Play battle start sound
+        this.playSound('battleStart');
 
         // Pilih kartu lawan secara acak
         const availableCards = this.cards.filter(card => card.id !== this.selectedCard.id);
@@ -411,6 +442,13 @@ class BattleCardGame {
 
             // Tampilkan hasil setelah delay
             setTimeout(() => {
+                // Play appropriate sound effect
+                if (result === 'win') {
+                    this.playSound('victory');
+                } else if (result === 'lose') {
+                    this.playSound('defeat');
+                }
+                
                 this.showBattleResult(result, playerPower, opponentPower);
             }, 3000);
         });
@@ -422,6 +460,7 @@ class BattleCardGame {
             // Phase 1: Player attacks
             playerCard.classList.add('attacking');
             opponentCard.classList.add('defending');
+            this.playSound('attack');
             
             // Add attack particles
             setTimeout(() => {
@@ -431,6 +470,7 @@ class BattleCardGame {
             // Add defend particles
             setTimeout(() => {
                 this.createParticleEffect(opponentCard, 'defend');
+                this.playSound('defend');
             }, 500);
             
             setTimeout(() => {
@@ -438,19 +478,21 @@ class BattleCardGame {
                 opponentCard.classList.remove('defending');
                 
                 // Phase 2: Opponent counter-attacks
-                setTimeout(() => {
-                    opponentCard.classList.add('attacking');
-                    playerCard.classList.add('defending');
-                    
-                    // Add counter-attack particles
                     setTimeout(() => {
-                        this.createParticleEffect(opponentCard, 'attack');
-                    }, 300);
-                    
-                    // Add counter-defend particles
-                    setTimeout(() => {
-                        this.createParticleEffect(playerCard, 'defend');
-                    }, 500);
+                        opponentCard.classList.add('attacking');
+                        playerCard.classList.add('defending');
+                        this.playSound('attack');
+                        
+                        // Add counter-attack particles
+                        setTimeout(() => {
+                            this.createParticleEffect(opponentCard, 'attack');
+                        }, 300);
+                        
+                        // Add counter-defend particles
+                        setTimeout(() => {
+                            this.createParticleEffect(playerCard, 'defend');
+                            this.playSound('defend');
+                        }, 500);
                     
                     setTimeout(() => {
                         opponentCard.classList.remove('attacking');
@@ -553,8 +595,8 @@ class BattleCardGame {
         const victoryText = document.createElement('div');
         victoryText.className = 'victory-text-overlay';
         victoryText.innerHTML = winner === 'player' ? 
-            '<span>🎉 VICTORY! 🎉</span>' : 
-            '<span>💥 DEFEAT 💥</span>';
+            '<span>VICTORY! </span>' : 
+            '<span>DEFEAT </span>';
         
         victoryText.style.cssText = `
             position: fixed;
@@ -704,7 +746,7 @@ class BattleCardGame {
         let title, subtitle, details;
         switch (result) {
             case 'win':
-                title = '🎉 VICTORY!';
+                title = 'VICTORY';
                 subtitle = 'Congratulations! You won the battle!';
                 resultTitle.className = 'win';
                 details = `
@@ -731,18 +773,16 @@ class BattleCardGame {
                     </div>
                     <div class="battle-result-actions">
                         <button class="action-btn primary" onclick="game.resetGame()">
-                            <span class="btn-icon">⚔️</span>
                             <span class="btn-text">New Battle</span>
                         </button>
                         <button class="action-btn secondary" onclick="game.backToSelection()">
-                            <span class="btn-icon">🏠</span>
                             <span class="btn-text">Main Menu</span>
                         </button>
                     </div>
                 `;
                 break;
             case 'lose':
-                title = '😔 DEFEAT';
+                title = 'DEFEAT';
                 subtitle = 'Better luck next time!';
                 resultTitle.className = 'lose';
                 details = `
@@ -769,18 +809,16 @@ class BattleCardGame {
                     </div>
                     <div class="battle-result-actions">
                         <button class="action-btn primary" onclick="game.resetGame()">
-                            <span class="btn-icon">⚔️</span>
                             <span class="btn-text">New Battle</span>
                         </button>
                         <button class="action-btn secondary" onclick="game.backToSelection()">
-                            <span class="btn-icon">🏠</span>
                             <span class="btn-text">Main Menu</span>
                         </button>
                     </div>
                 `;
                 break;
             case 'draw':
-                title = '🤝 DRAW';
+                title = 'DRAW';
                 subtitle = 'An evenly matched battle!';
                 resultTitle.className = 'draw';
                 details = `
